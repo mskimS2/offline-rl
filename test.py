@@ -24,7 +24,8 @@ if __name__ == "__main__":
             obs = torch.as_tensor(obs, dtype=torch.float32)
             action = ac.act(obs)
         obs, reward, done, info = env.step(action)
-        img = env.render("rgb_array")  # env.render()
+        # img = env.render("rgb_array")  # env.render()
+        env.render()
 
         if done:
             break

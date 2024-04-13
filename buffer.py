@@ -45,6 +45,45 @@ class PPOBuffer:
         # the next two lines implement the advantage normalization trick
         adv_mean, adv_std = np.mean(self.adv_buf), np.std(self.adv_buf)
         self.adv_buf = (self.adv_buf - adv_mean) / adv_std
-        data = dict(obs=self.obs_buf, act=self.act_buf, ret=self.ret_buf,
-                    adv=self.adv_buf, logp=self.logp_buf)
-        return {k: torch.as_tensor(v, dtype=torch.float32) for k,v in data.items()}
+        data = dict(
+            obs=self.obs_buf,
+            act=self.act_buf,
+            ret=self.ret_buf,
+            adv=self.adv_buf,
+            logp=self.logp_buf,
+        )
+        return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in data.items()}
+
+
+class ReplayBuffer:
+
+    def __init__(self, obs_dim, act_dim, size):
+        self.obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
+        self.obs2_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
+        self.act_buf = np.zeros(combined_shape(size, act_dim), dtype=np.float32)
+        self.rew_buf = np.zeros(size, dtype=np.float32)
+        self.next_obs_buf = np.zeros(combined_shape(size, obs_dim), dtype=np.float32)
+        self.done_buf = np.zeros(size, dtype=np.float32)
+        self.idx = 0
+        self.size = 0
+        self.max_size = size
+
+    def store(self, obs, act, rew, next_obs, done):
+        self.obs_buf[self.idx] = obs
+        self.obs2_buf[self.idx] = next_obs
+        self.act_buf[self.idx] = act
+        self.rew_buf[self.idx] = rew
+        self.done_buf[self.idx] = done
+        self.idx = (self.idx + 1) % self.max_size
+        self.size = min(self.size + 1, self.max_size)
+
+    def sample_batch(self, batch_size=32):
+        idxs = np.random.randint(0, self.size, size=batch_size)
+        batch = dict(
+            obs=self.obs_buf[idxs],
+            obs2=self.obs2_buf[idxs],
+            act=self.act_buf[idxs],
+            rew=self.rew_buf[idxs],
+            done=self.done_buf[idxs],
+        )
+        return {k: torch.as_tensor(v, dtype=torch.float32) for k, v in batch.items()}
