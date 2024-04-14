@@ -1,14 +1,7 @@
 import torch
 import numpy as np
 from torch import nn
-
-
-def mlp(sizes, activation, output_activation=nn.Identity):
-    layers = []
-    for j in range(len(sizes) - 1):
-        act = activation if j < len(sizes) - 2 else output_activation
-        layers += [nn.Linear(sizes[j], sizes[j + 1]), act()]
-    return nn.Sequential(*layers)
+from models.layers.mlp import MLP
 
 
 class MLPGaussianActor(nn.Module):
@@ -17,7 +10,7 @@ class MLPGaussianActor(nn.Module):
         super().__init__()
         log_std = -0.5 * np.ones(act_dim, dtype=np.float32)
         self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
-        self.mu_net = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
+        self.mu_net = MLP([obs_dim] + list(hidden_sizes) + [act_dim], activation)
 
     def _distribution(self, obs):
         mu = self.mu_net(obs)
@@ -42,7 +35,7 @@ class MLPCritic(nn.Module):
 
     def __init__(self, obs_dim, hidden_sizes, activation):
         super().__init__()
-        self.v_net = mlp([obs_dim] + list(hidden_sizes) + [1], activation)
+        self.v_net = MLP([obs_dim] + list(hidden_sizes) + [1], activation)
 
     def forward(self, obs):
         return torch.squeeze(self.v_net(obs), -1)  # Critical to ensure v has right shape.

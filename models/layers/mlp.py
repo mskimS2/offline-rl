@@ -10,6 +10,8 @@ class MLP(nn.Module):
         activation: nn.Module,
         output_activation=nn.Identity,
     ):
+        super(MLP, self).__init__()
+
         layers = []
         for j in range(len(dim_list) - 1):
             act = activation if j < len(dim_list) - 2 else output_activation
