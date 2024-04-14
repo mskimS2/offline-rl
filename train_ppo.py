@@ -4,8 +4,8 @@ import time
 import torch
 import numpy as np
 from torch import nn
-from ppo import MLPActorCritic
-from buffer import PPOBuffer
+from models.ppo import MLPActorCritic
+from buffer import OnlineReplayBuffer
 from utils import count_vars
 from torch.utils.tensorboard import SummaryWriter
 
@@ -68,7 +68,7 @@ def ppo(
     print("\nNumber of parameters: \t pi: %d, \t v: %d\n" % var_counts)
 
     # Set up experience buffer
-    buf = PPOBuffer(obs_dim, act_dim, steps_per_epoch, gamma, lam)
+    buf = OnlineReplayBuffer(obs_dim, act_dim, steps_per_epoch, gamma, lam)
 
     # Set up function for computing PPO policy loss
     def compute_loss_pi(data):
@@ -185,30 +185,14 @@ def ppo(
             f"[Epoch:{epoch}] EpRet:{np.min(EpRet[-10:]):8.2f} < {np.mean(EpRet[-10:]):8.2f} < {np.max(EpRet[-10:]):8.2f}, EpLen:{np.mean(EpLen[-10:]):8.2f}, VVals:{np.mean(VVals[-10:]):8.2f}, TotalEnvInteracts:{TotalEnvInteracts[-1]:8d}, LossPi:{np.mean(LossPi[-10:]):8.2f}, LossV:{np.mean(LossV[-10:]):8.2f}, Entropy:{np.mean(Entropy[-10:]):8.2f}, KL:{np.mean(KL[-10:]):8.2f}, Time:{Time[-1]:8.2f}"
         )
 
-        writer.add_scalar(
-            "Min-EpRet", np.min(EpRet[-10:]), global_step=TotalEnvInteracts[-1]
-        )
-        writer.add_scalar(
-            "Mean-EpRet", np.mean(EpRet[-10:]), global_step=TotalEnvInteracts[-1]
-        )
-        writer.add_scalar(
-            "Max-EpRet", np.max(EpRet[-10:]), global_step=TotalEnvInteracts[-1]
-        )
-        writer.add_scalar(
-            "EpLen", np.mean(EpLen[-10:]), global_step=TotalEnvInteracts[-1]
-        )
-        writer.add_scalar(
-            "VVals", np.mean(VVals[-10:]), global_step=TotalEnvInteracts[-1]
-        )
-        writer.add_scalar(
-            "LossPi", np.mean(LossPi[-10:]), global_step=TotalEnvInteracts[-1]
-        )
-        writer.add_scalar(
-            "LossV", np.mean(LossV[-10:]), global_step=TotalEnvInteracts[-1]
-        )
-        writer.add_scalar(
-            "Entropy", np.mean(Entropy[-10:]), global_step=TotalEnvInteracts[-1]
-        )
+        writer.add_scalar("Min-EpRet", np.min(EpRet[-10:]), global_step=TotalEnvInteracts[-1])
+        writer.add_scalar("Mean-EpRet", np.mean(EpRet[-10:]), global_step=TotalEnvInteracts[-1])
+        writer.add_scalar("Max-EpRet", np.max(EpRet[-10:]), global_step=TotalEnvInteracts[-1])
+        writer.add_scalar("EpLen", np.mean(EpLen[-10:]), global_step=TotalEnvInteracts[-1])
+        writer.add_scalar("VVals", np.mean(VVals[-10:]), global_step=TotalEnvInteracts[-1])
+        writer.add_scalar("LossPi", np.mean(LossPi[-10:]), global_step=TotalEnvInteracts[-1])
+        writer.add_scalar("LossV", np.mean(LossV[-10:]), global_step=TotalEnvInteracts[-1])
+        writer.add_scalar("Entropy", np.mean(Entropy[-10:]), global_step=TotalEnvInteracts[-1])
         writer.add_scalar("KL", np.mean(KL[-10:]), global_step=TotalEnvInteracts[-1])
 
         torch.save(ac.state_dict(), "outputs/ppo_half_cheetah.pth")
@@ -218,7 +202,6 @@ def ppo(
 if __name__ == "__main__":
     os.makedirs("outputs", exist_ok=True)
     ac, EpRet, EpLen, VVals, TotalEnvInteracts, LossPi, LossV, Entropy, KL, Time = ppo(
-        # lambda: gym.make("HalfCheetah-v4"),
         lambda: gym.make("HalfCheetah-v4"),
         actor_critic=MLPActorCritic,
         ac_kwargs=dict(hidden_sizes=[64, 64]),

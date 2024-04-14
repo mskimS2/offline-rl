@@ -6,16 +6,12 @@ import time
 import torch
 import numpy as np
 from torch import nn
-from sac import MLPActorCritic
+from models.sac import MLPActorCritic
 from buffer import ReplayBuffer
-from utils import count_vars
+from utils import count_vars, sample_action
 from torch.utils.tensorboard import SummaryWriter
 
 device = "cuda"
-
-
-def sample_action(action_dim, action_limit):
-    return (2.0 * np.random.uniform(size=(action_dim,)) - 1) * action_limit
 
 
 def sac(
@@ -269,6 +265,7 @@ if __name__ == "__main__":
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
     for p in ac_targ.parameters():
         p.requires_grad = False
+
     sac = sac(
         lambda: env,
         actor_critic=MLPActorCritic,

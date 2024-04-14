@@ -1,4 +1,3 @@
-
 import torch
 import numpy as np
 from torch import nn
@@ -6,9 +5,9 @@ from torch import nn
 
 def mlp(sizes, activation, output_activation=nn.Identity):
     layers = []
-    for j in range(len(sizes)-1):
-        act = activation if j < len(sizes)-2 else output_activation
-        layers += [nn.Linear(sizes[j], sizes[j+1]), act()]
+    for j in range(len(sizes) - 1):
+        act = activation if j < len(sizes) - 2 else output_activation
+        layers += [nn.Linear(sizes[j], sizes[j + 1]), act()]
     return nn.Sequential(*layers)
 
 
@@ -26,9 +25,9 @@ class MLPGaussianActor(nn.Module):
         return torch.distributions.normal.Normal(mu, std)
 
     def _log_prob_from_distribution(self, pi, act):
-        return pi.log_prob(act).sum(axis=-1)    # Last axis sum needed for Torch Normal distribution
+        return pi.log_prob(act).sum(axis=-1)  # Last axis sum needed for Torch Normal distribution
 
-    def _get_mode(self,obs):
+    def _get_mode(self, obs):
         return self.mu_net(obs)
 
     def forward(self, obs, act=None):
@@ -46,20 +45,19 @@ class MLPCritic(nn.Module):
         self.v_net = mlp([obs_dim] + list(hidden_sizes) + [1], activation)
 
     def forward(self, obs):
-        return torch.squeeze(self.v_net(obs), -1) # Critical to ensure v has right shape.
+        return torch.squeeze(self.v_net(obs), -1)  # Critical to ensure v has right shape.
 
 
 class MLPActorCritic(nn.Module):
 
-    def __init__(self, obs_dim, act_dim,
-                 hidden_sizes=(64,64), activation=nn.Tanh):
+    def __init__(self, obs_dim, act_dim, hidden_sizes=(64, 64), activation=nn.Tanh):
         super().__init__()
 
         # policy builder depends on action space
         self.pi = MLPGaussianActor(obs_dim, act_dim, hidden_sizes, activation)
 
         # build value function
-        self.v  = MLPCritic(obs_dim, hidden_sizes, activation)
+        self.v = MLPCritic(obs_dim, hidden_sizes, activation)
 
     def step(self, obs):
         with torch.no_grad():
