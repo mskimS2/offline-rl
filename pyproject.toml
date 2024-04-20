@@ -24,6 +24,7 @@ mediapy = "^1.2.0"
 scipy = "^1.13.0"
 black = "^24.3.0"
 glfw = "^2.7.0"
+pytorch-lightning = "^2.2.2"
 
 
 [[tool.poetry.source]]

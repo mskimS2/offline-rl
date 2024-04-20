@@ -19,7 +19,7 @@ MEAN_MIN = -9.0
 MEAN_MAX = 9.0
 
 
-class SquashedGaussianMLPActor(nn.Module):
+class SquashedGaussianActor(nn.Module):
 
     def __init__(self, obs_dim, act_dim, hidden_sizes, activation, act_limit):
         super().__init__()
@@ -28,7 +28,7 @@ class SquashedGaussianMLPActor(nn.Module):
         self.log_std_layer = nn.Linear(hidden_sizes[-1], act_dim)
         self.act_limit = act_limit
 
-    def log_prob(self, obs, actions):
+    def log_prob(self, obs: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
         net_out = self.net(obs)
         mu = self.mu_layer(net_out)
         log_std = self.log_std_layer(net_out)
@@ -40,7 +40,9 @@ class SquashedGaussianMLPActor(nn.Module):
         log_prob -= (2 * (np.log(2) - actions - F.softplus(-2 * actions))).sum(axis=1)
         return log_prob.sum(-1)
 
-    def forward(self, obs, deterministic=False, with_logprob=True):
+    def forward(
+        self, obs: torch.Tensor, deterministic: bool = False, with_logprob: bool = True
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         net_out = self.net(obs)
         mu = self.mu_layer(net_out)
         log_std = self.log_std_layer(net_out)
@@ -55,9 +57,7 @@ class SquashedGaussianMLPActor(nn.Module):
 
         if with_logprob:
             logp_pi = pi_distribution.log_prob(pi_action).sum(axis=-1)
-            logp_pi -= (2 * (np.log(2) - pi_action - F.softplus(-2 * pi_action))).sum(
-                axis=1
-            )
+            logp_pi -= (2 * (np.log(2) - pi_action - F.softplus(-2 * pi_action))).sum(axis=1)
         else:
             logp_pi = None
 
@@ -69,11 +69,11 @@ class SquashedGaussianMLPActor(nn.Module):
 
 class MLPQFunction(nn.Module):
 
-    def __init__(self, obs_dim, act_dim, hidden_sizes, activation):
+    def __init__(self, obs_dim: int, act_dim: int, hidden_sizes: List[int], activation: nn.Module):
         super().__init__()
-        self.q = mlp([obs_dim + act_dim] + list(hidden_sizes) + [1], activation)
+        self.q = mlp([obs_dim + act_dim] + hidden_sizes + [1], activation)
 
-    def forward(self, obs, act):
+    def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
         q = self.q(torch.cat([obs, act], dim=-1))
         return torch.squeeze(q, -1)  # Critical to ensure q has right shape.
 
@@ -82,26 +82,24 @@ class MLPActorCritic(nn.Module):
 
     def __init__(
         self,
-        observation_dim,
-        action_dim,
-        action_limit,
-        hidden_sizes=(256, 256),
-        activation=nn.ReLU,
+        observation_dim: int,
+        action_dim: int,
+        action_limit: float,
+        hidden_sizes: List[int] = [256, 256],
+        activation: nn.Module = nn.ReLU,
     ):
-        super().__init__()
+        super(MLPActorCritic, self).__init__()
 
         obs_dim = observation_dim
         act_dim = action_dim
         act_limit = action_limit
 
         # build policy and value functions
-        self.pi = SquashedGaussianMLPActor(
-            obs_dim, act_dim, hidden_sizes, activation, act_limit
-        )
+        self.pi = SquashedGaussianActor(obs_dim, act_dim, hidden_sizes, activation, act_limit)
         self.q1 = MLPQFunction(obs_dim, act_dim, hidden_sizes, activation)
         self.q2 = MLPQFunction(obs_dim, act_dim, hidden_sizes, activation)
 
-    def act(self, obs, deterministic=False):
+    def act(self, obs: torch.Tensor, deterministic: bool = False) -> np.ndarray:
         with torch.no_grad():
             a, _ = self.pi(obs, deterministic, False)
             return a.numpy()

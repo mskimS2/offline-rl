@@ -7,7 +7,7 @@ import time
 import torch
 import numpy as np
 from torch import nn
-from models.cql import MLPQFunction, SquashedGaussianMLPActor
+from models.cql import MLPQFunction, SquashedGaussianActor
 from buffer import OfflineSavedReplayBuffer, get_offline_dataset
 from utils import soft_update
 from torch.utils.tensorboard import SummaryWriter
@@ -43,7 +43,7 @@ def cql(
     qf2 = MLPQFunction(obs_dim, act_dim, hidden_sizes, activation).to(device)
     trg_qf1 = deepcopy(qf1).to(device)
     trg_qf2 = deepcopy(qf2).to(device)
-    policy = SquashedGaussianMLPActor(obs_dim, act_dim, hidden_sizes, activation, act_limit).to(device)
+    policy = SquashedGaussianActor(obs_dim, act_dim, hidden_sizes, activation, act_limit).to(device)
     log_alpha = torch.zeros(1, requires_grad=True, device=device)
 
     # set optimizer
@@ -130,7 +130,7 @@ def cql(
 
         qf_loss = qf1_loss + qf2_loss + cql_min_qf1_loss + cql_min_qf2_loss
 
-        # Gradient 업데이트
+        # Gradient update
         alpha_optimizer.zero_grad()
         alpha_loss.backward()
         alpha_optimizer.step()
@@ -145,7 +145,7 @@ def cql(
         qf1_optimizer.step()
         qf2_optimizer.step()
 
-        # 타겟 네트워크 업데이트
+        # target network update
         soft_update(trg_qf1, qf1, soft_update_tau)
         soft_update(trg_qf2, qf2, soft_update_tau)
 

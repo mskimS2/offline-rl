@@ -1,7 +1,7 @@
 import numpy as np
 import gym
 import torch
-from ppo import MLPActorCritic
+from trainer.ppo import PPO
 
 
 if __name__ == "__main__":
@@ -10,7 +10,7 @@ if __name__ == "__main__":
     env.metadata["render_modes"] = "rgb_array"
 
     device = "cpu"
-    ac = MLPActorCritic(
+    ac = PPO(
         np.prod(env.observation_space.shape),
         np.prod(env.action_space.shape),
         hidden_sizes=(64, 64),
