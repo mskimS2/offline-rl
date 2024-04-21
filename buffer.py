@@ -1,4 +1,5 @@
 import gym
+import pickle
 import torch
 import numpy as np
 from typing import Dict, Any
@@ -140,8 +141,22 @@ class OfflineSavedReplayBuffer:
             self._dones[indices],
         ]
 
+    def normalize_states(self, eps: float = 1e-3):
+        mean = self._s.mean(0, keepdims=True)
+        std = self._s.std(0, keepdims=True) + eps
+        self._s = (self._s - mean) / std
+        self._ns = (self._ns - mean) / std
+        return mean.cpu().data.numpy().flatten(), std.cpu().data.numpy().flatten()
 
-def get_offline_dataset(env: gym, num_trajs: int = 100, max_ep_len: int = 1000) -> Dict[str, Any]:
+
+def get_offline_dataset(env: gym, file_name: str, num_trajs: int = 100, max_ep_len: int = 1000) -> Dict[str, Any]:
+    if file_name is not None:
+        with open(file_name, "rb") as f:
+            dataset = pickle.load(f)
+            ravg = dataset["ravg"]
+            print(f"offline dataset's average return : {np.mean(ravg)}")
+            return dataset
+
     act_dim = env.action_space.shape[0]
     act_limit = env.action_space.high[0]
 

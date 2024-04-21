@@ -7,6 +7,21 @@ from typing import List, Tuple
 from .mlp import MLP
 
 
+class MLPActor(nn.Module):
+    def __init__(self, obs_dim, act_dim, hidden_sizes, activation, act_limit):
+        super().__init__()
+        self.net = MLP([obs_dim] + hidden_sizes + [act_dim], activation, activation)
+        self.act_limit = act_limit
+
+    def forward(self, state):
+        return self.act_limit * self.net(state)
+
+    @torch.inference_mode()
+    def act(self, state, device="cpu"):
+        state = torch.tensor(state.reshape(1, -1), device=device, dtype=torch.float32)
+        return self(state).cpu().data.numpy().flatten()
+
+
 class GaussianActor(nn.Module):
 
     def __init__(

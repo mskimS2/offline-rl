@@ -24,3 +24,13 @@ class MLPQFunction(nn.Module):
     def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
         # Critical to ensure q has right shape.
         return torch.squeeze(self.q(torch.cat([obs, act], dim=-1)), -1)
+
+
+class TD3MLPQFunction(nn.Module):
+
+    def __init__(self, obs_dim: int, act_dim: int, hidden_sizes: List[int], activation: nn.Module):
+        super(TD3MLPQFunction, self).__init__()
+        self.q = MLP([obs_dim + act_dim] + hidden_sizes + [1], activation)
+
+    def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
+        return self.q(torch.cat([obs, act], dim=-1))
