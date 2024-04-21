@@ -5,7 +5,7 @@ import numpy as np
 from torch import nn
 
 
-def set_randomseed(random_seed: int = 2024):
+def set_randomness(random_seed: int = 2024):
     torch.manual_seed(random_seed)
     torch.cuda.manual_seed(random_seed)
     torch.cuda.manual_seed_all(random_seed)  # if use multi-GPU
@@ -72,9 +72,7 @@ class RunningMeanStd:
         )
 
 
-def update_mean_var_count_from_moments(
-    mean, var, count, batch_mean, batch_var, batch_count
-):
+def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
     delta = batch_mean - mean
     tot_count = count + batch_count
 

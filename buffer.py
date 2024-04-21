@@ -157,7 +157,7 @@ def get_offline_dataset(env: gym, num_trajs: int = 100, max_ep_len: int = 1000) 
         d = False if ep_len == max_ep_len else d
 
         s.append(o)
-        a.append(a)
+        a.append(ra)
         ns.append(o2)
         reward.append(r)
         done.append(d)

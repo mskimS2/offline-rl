@@ -6,10 +6,10 @@ from buffer import OnlineReplayBuffer
 from torch.optim import Adam
 from torch.utils.tensorboard import SummaryWriter
 from trainer.ppo import PPOTrainer
-from utils import set_randomseed
+from utils import netset_randomness
 
 
-set_randomseed(42)
+netset_randomness(42)
 
 args = get_config()
 

@@ -22,4 +22,5 @@ class MLPQFunction(nn.Module):
         self.q = MLP([obs_dim + act_dim] + hidden_sizes + [1], activation)
 
     def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
+        # Critical to ensure q has right shape.
         return torch.squeeze(self.q(torch.cat([obs, act], dim=-1)), -1)

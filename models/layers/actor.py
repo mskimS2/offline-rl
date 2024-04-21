@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from torch import nn
+from torch.distributions.normal import Normal
 from typing import List, Tuple
 from .mlp import MLP
 
@@ -86,3 +87,15 @@ class SquashedGaussianActor(nn.Module):
         pi_action = self.act_limit * pi_action
 
         return pi_action, logp_pi
+
+    def log_prob(self, obs: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
+        net_out = self.net(obs)
+        mu = self.mu_layer(net_out)
+        log_std = self.log_std_layer(net_out)
+        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+        std = torch.exp(log_std)
+
+        pi_distribution = Normal(mu, std)
+        log_prob = pi_distribution.log_prob(actions).sum(axis=-1)
+        log_prob -= (2 * (np.log(2) - actions - F.softplus(-2 * actions))).sum(axis=1)
+        return log_prob.sum(-1)
