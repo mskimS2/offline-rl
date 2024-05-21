@@ -1,23 +1,21 @@
-import torch
 from torch import nn
 from typing import List
+from utils import get_activation
 
 
-class MLP(nn.Module):
+class MLP(nn.Sequential):
     def __init__(
         self,
-        dim_list: List[int],
-        activation: nn.Module,
-        output_activation=nn.Identity,
+        hidden_dim: List[int],
+        hidden_act: nn.Module,
+        out_act: nn.Module = nn.Identity(),
     ):
         super(MLP, self).__init__()
 
-        layers = []
-        for j in range(len(dim_list) - 1):
-            act = activation if j < len(dim_list) - 2 else output_activation
-            layers += [nn.Linear(dim_list[j], dim_list[j + 1]), act()]
+        for i, (in_dim, out_dim) in enumerate(zip(hidden_dim[:-1], hidden_dim[1:])):
+            act = hidden_act if i < len(hidden_dim) - 2 else out_act
+            self.add_module(f"linear_{i}", nn.Linear(in_dim, out_dim))
+            self.add_module(f"activation_{i}", get_activation(act))
 
-        self.mlp = nn.Sequential(*layers)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.mlp(x)
+    def __repr__(self):
+        return f"Num Params: {sum(p.numel() for p in self.parameters())}"
