@@ -1,6 +1,6 @@
 from torch import nn
 from typing import List
-from utils import get_activation
+from .utils import get_activation
 
 
 class MLP(nn.Sequential):
