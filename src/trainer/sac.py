@@ -5,7 +5,7 @@ from typing import Callable, Dict, Any
 from copy import deepcopy
 from torch import nn
 from models.sac import SAC
-from buffer import OfflineReplayBuffer, sample_action
+from buffer import ReplayBuffer, sample_action
 from utils import count_vars
 
 
@@ -75,7 +75,7 @@ class SACTrainer:
         self.q_optimizer = torch.optim.Adam(self.q_params, lr=lr)
 
         # Experience buffer
-        self.replay_buffer = OfflineReplayBuffer(obs_dim=self.obs_dim, act_dim=self.act_dim, size=replay_size)
+        self.replay_buffer = ReplayBuffer(obs_dim=self.obs_dim, act_dim=self.act_dim, size=replay_size)
 
     def __repr__(self):
         # Count variables (protip: try to get a feel for how different size networks behave!)
@@ -86,7 +86,13 @@ class SACTrainer:
 
     # Set up function for computing SAC Q-losses
     def compute_loss_q(self, data):
-        o, a, r, o2, d = data["obs"], data["act"], data["rew"], data["obs2"], data["done"]
+        o, a, r, o2, d = (
+            data["observations"],
+            data["actions"],
+            data["rewards"],
+            data["next_observations"],
+            data["terminals"],
+        )
         q1 = self.sac.q1(o, a)
         q2 = self.sac.q2(o, a)
 

@@ -117,7 +117,8 @@ def rambo(
     device=torch.device("cpu"),
 ):
     env = env_fn()
-    dataset = get_offline_dataset(env, file_name="expert_dataset.pkl")
+    # dataset = get_offline_dataset(env, file_name="expert_dataset.pkl")
+    dataset = get_offline_dataset(env, file_name=None)
 
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0]
