@@ -56,6 +56,12 @@ class GaussianActor(nn.Module):
             logp_a = self._log_prob_from_distribution(pi, act)
         return pi, logp_a
 
+    @torch.no_grad()
+    def act(self, obs, device="cpu"):
+        obs = torch.tensor(obs.reshape(1, -1), device=device, dtype=torch.float32)
+        action = self._distribution(obs).mean
+        return action.cpu().data.numpy().flatten()
+
 
 class SquashedGaussianActor(nn.Module):
     def __init__(self, obs_dim: int, act_dim: int, hidden_sizes: List[int], activation: nn.Module, act_limit: float):
@@ -95,7 +101,9 @@ class SquashedGaussianActor(nn.Module):
         pi_action = self.act_limit * torch.tanh(pi_action)
         return pi_action, logp_pi
 
-    def get_detached_outputs(self, obs: torch.Tensor, deterministic=False, with_logprob=True) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_detached_outputs(
+        self, obs: torch.Tensor, deterministic=False, with_logprob=True
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         pi_action, logp_pi = self.forward(obs, deterministic, with_logprob)
         return pi_action.detach(), logp_pi.detach() if logp_pi is not None else None
 

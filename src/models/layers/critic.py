@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from typing import List
+from typing import List, Tuple
 from models.layers.mlp import MLP
 from models.layers.actor import GaussianActor
 
@@ -13,6 +13,21 @@ class MLPCritic(nn.Module):
 
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
         return torch.squeeze(self.v_net(obs), -1)  # Critical to ensure v has right shape.
+
+
+class MLPTwinQFunction(nn.Module):
+
+    def __init__(self, obs_dim: int, act_dim: int, hidden_sizes: List[int], activation: nn.Module):
+        super().__init__()
+        self.q1 = MLP([obs_dim + act_dim] + list(hidden_sizes) + [1], activation)
+        self.q2 = MLP([obs_dim + act_dim] + list(hidden_sizes) + [1], activation)
+
+    def both(self, obs: torch.Tensor, act: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        sa = torch.cat([obs, act], 1)
+        return self.q1(sa), self.q2(sa)
+
+    def forward(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
+        return torch.min(*self.both(obs, act))
 
 
 class MLPQFunction(nn.Module):

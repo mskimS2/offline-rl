@@ -22,6 +22,7 @@ class CQLTrainer(OfflineRLTrainer):
         networks: Dict[str, nn.Module] = None,
         logger: Optional[TensorBoardLogger] = None,
         optimizers: Dict[str, torch.optim.Optimizer] = None,
+        schedulers: Dict[str, Any] = None,
     ):
         super(CQLTrainer, self).__init__(config)
 
@@ -37,6 +38,7 @@ class CQLTrainer(OfflineRLTrainer):
         self.initialize_networks(networks)
         self.initialize_optimizers(optimizers)
         self.initialize_logger(logger)
+        self.initialize_schedulers(schedulers)
 
     def initialize_networks(self, networks: Dict[str, nn.Module]):
         missing_keys = self.REQUIRED_NETWORK_KEYS - networks.keys()
@@ -44,9 +46,9 @@ class CQLTrainer(OfflineRLTrainer):
             raise ValueError(f"Missing required network keys: {missing_keys}")
 
         self.q1 = networks["q1"].to(self.device)
-        self.q1_trg = deepcopy(self.q1).to(self.device)
+        self.q1_trg = deepcopy(self.q1).requires_grad_(False).to(self.device)
         self.q2 = networks["q2"].to(self.device)
-        self.q2_trg = deepcopy(self.q2).to(self.device)
+        self.q2_trg = deepcopy(self.q2).requires_grad_(False).to(self.device)
         self.policy = networks["policy"].to(self.device)
 
     def initialize_optimizers(self, optimizers: Dict[str, torch.optim.Optimizer]):
@@ -68,7 +70,7 @@ class CQLTrainer(OfflineRLTrainer):
         self.logger.init_experiment("CQL Training")
         self.logger.log_params(self.config)
 
-    def train_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, Any]:
+    def train_step(self, idx: int, batch: Dict[str, torch.Tensor]):
         s, actions, rewards, ns, dones = self.create_batch(batch)
 
         new_actions, log_pi = self.policy(s)
@@ -90,27 +92,29 @@ class CQLTrainer(OfflineRLTrainer):
 
         self.update(alpha_loss, policy_loss, qf_loss)
 
-        return dict(
-            log_pi=log_pi.mean().item(),
-            policy_loss=policy_loss.item(),
-            alpha_loss=alpha_loss.item(),
-            q1_loss=q1_loss.item(),
-            q2_loss=q2_loss.item(),
-            average_target_q=q_target.mean().item(),
-            cql_min_q1_loss=cql_min_q1_loss.mean().item(),
-            cql_min_q2_loss=cql_min_q2_loss.mean().item(),
+        self.logger.log_metrics(
+            dict(
+                log_pi=log_pi.mean().item(),
+                policy_loss=policy_loss.item(),
+                alpha_loss=alpha_loss.item(),
+                q1_loss=q1_loss.item(),
+                q2_loss=q2_loss.item(),
+                average_target_q=q_target.mean().item(),
+                cql_min_q1_loss=cql_min_q1_loss.mean().item(),
+                cql_min_q2_loss=cql_min_q2_loss.mean().item(),
+            ),
+            idx,
         )
 
     def train(self):
-        for t in range(self.config["max_timesteps"]):
+        for idx in range(self.config["max_timesteps"]):
             batch = self.replay_buffer.sample(self.config["batch_size"])
-            metrics = self.train_step(batch)
-            self.logger.log_metrics(metrics, t)
+            self.train_step(idx, batch)
 
-            if (t % 1000) == 0:
+            if (idx % 1000) == 0:
                 avg_ret = self.evaluate()
-                self.logger.log_metrics({"test_return": avg_ret}, t)
-                print(f"{self.env.spec.id} Test Return iteration {t}:{avg_ret:8.2f}")
+                self.logger.log_metrics({"test_return": avg_ret}, idx)
+                print(f"{self.env.spec.id} Test Return iteration {idx}:{avg_ret:8.2f}")
 
             # self.save_checkpoint(self.config["save_ckpt"], t)
 
@@ -168,16 +172,17 @@ class CQLTrainer(OfflineRLTrainer):
 
         return (cql_loss, q_loss)
 
+    @torch.no_grad()
     def evaluate(self, num_episodes: int = 10, max_episode_steps: int = 1000) -> float:
         returns = []
         for _ in range(num_episodes):
             obs = self.env.reset()
             ret = 0
             for _ in range(max_episode_steps):
-                with torch.no_grad():
-                    obs_tensor = torch.FloatTensor(obs).to(self.device).unsqueeze(0)  # Add batch dimension
-                    action, _ = self.policy(obs_tensor, deterministic=True)
-                    action = action.cpu().numpy().flatten()
+                obs_tensor = torch.FloatTensor(obs).to(self.device).unsqueeze(0)  # Add batch dimension
+                action, _ = self.policy(obs_tensor, deterministic=True)
+                action = action.cpu().numpy().flatten()
+
                 obs, reward, done, _ = self.env.step(action)
                 ret += reward
                 if done:
@@ -189,7 +194,7 @@ class CQLTrainer(OfflineRLTrainer):
         alpha = self.log_alpha.exp()
         return (alpha * log_pi - q_new_actions).mean()
 
-    def update(self, alpha_loss, policy_loss, qf_loss):
+    def update(self, idx: int, alpha_loss, policy_loss, qf_loss):
         self.alpha_optimizer.zero_grad()
         alpha_loss.backward()
         self.alpha_optimizer.step()
@@ -207,6 +212,10 @@ class CQLTrainer(OfflineRLTrainer):
         # target network update
         soft_update(self.q1_trg, self.q1, self.config["tau"])
         soft_update(self.q2_trg, self.q2, self.config["tau"])
+
+        self.logger.log_metrics(
+            {"alpha_loss": alpha_loss.item(), "policy_loss": policy_loss.item(), "qf_loss": qf_loss.item()}, idx
+        )
 
     def create_batch(
         self, batch: Dict[str, torch.Tensor]

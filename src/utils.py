@@ -84,3 +84,7 @@ def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, 
     new_count = tot_count
 
     return new_mean, new_var, new_count
+
+
+def asymmetric_l2_loss(u, tau):
+        return torch.mean(torch.abs(tau - (u < 0).float()) * u**2)

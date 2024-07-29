@@ -71,7 +71,9 @@ if __name__ == "__main__":
             "q2": torch.optim.Adam(networks["q2"].parameters(), lr=config["qf_lr"]),
         }
 
+        schedulers = {}
+
         logger = TensorBoardLogger()
-        
-        cql = CQLTrainer(env, config, replay_buffer, networks, logger, optimizers)
+
+        cql = CQLTrainer(env, config, replay_buffer, networks, logger, optimizers, schedulers)
         cql.train()
