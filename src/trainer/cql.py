@@ -1,39 +1,42 @@
+import gym
 import torch
 import numpy as np
 import torch.nn.functional as F
 from torch import nn
 from copy import deepcopy
+from loggers.base import Logger
 from loggers.tensorboard import TensorBoardLogger
 from buffer import ReplayBuffer
 from utils import soft_update
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
+from .base import OfflineRLTrainer
 
 
-class CQLTrainer:
-    REQUIRED_NETWORK_KEYS = {"q1", "q2", "policy"}
-    REQUIRED_OPTIMIZER_KEYS = {"alpha", "policy", "q1", "q2"}
+class CQLTrainer(OfflineRLTrainer):
 
     def __init__(
         self,
-        env,
-        config: Dict[str, Any],
-        replay_buffer: ReplayBuffer,
+        env: gym.Env = None,
+        config: Dict[str, Any] = None,
+        replay_buffer: ReplayBuffer = None,
         networks: Dict[str, nn.Module] = None,
+        logger: Optional[TensorBoardLogger] = None,
         optimizers: Dict[str, torch.optim.Optimizer] = None,
     ):
+        super(CQLTrainer, self).__init__(config)
+
         self.config = config
         self.env = env
-        self.obs_dim = env.observation_space.shape[0]
-        self.act_dim = env.action_space.shape[0]
+        self.obs_dim = self.env.observation_space.shape[0] if hasattr(self.env, "observation_space") else None
+        self.act_dim = self.env.action_space.shape[0] if hasattr(self.env, "action_space") else None
         self.act_limit = env.action_space.high[0]
         self.replay_buffer = replay_buffer
-        self.device = config["device"]
 
-        # *----------- network -----------*
         self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+
         self.initialize_networks(networks)
         self.initialize_optimizers(optimizers)
-        self.initialize_logger()
+        self.initialize_logger(logger)
 
     def initialize_networks(self, networks: Dict[str, nn.Module]):
         missing_keys = self.REQUIRED_NETWORK_KEYS - networks.keys()
@@ -56,8 +59,11 @@ class CQLTrainer:
         self.q1_optimizer = optimizers["q1"]
         self.q2_optimizer = optimizers["q2"]
 
-    def initialize_logger(self):
-        self.logger = TensorBoardLogger()
+    def initialize_schedulers(self) -> Any:
+        return None
+
+    def initialize_logger(self, logger: Logger):
+        self.logger = logger
         self.logger.init_logger()
         self.logger.init_experiment("CQL Training")
         self.logger.log_params(self.config)
@@ -102,7 +108,7 @@ class CQLTrainer:
             self.logger.log_metrics(metrics, t)
 
             if (t % 1000) == 0:
-                avg_ret = self.evaluate_policy()
+                avg_ret = self.evaluate()
                 self.logger.log_metrics({"test_return": avg_ret}, t)
                 print(f"{self.env.spec.id} Test Return iteration {t}:{avg_ret:8.2f}")
 
@@ -162,7 +168,7 @@ class CQLTrainer:
 
         return (cql_loss, q_loss)
 
-    def evaluate_policy(self, num_episodes: int = 10, max_episode_steps: int = 1000) -> float:
+    def evaluate(self, num_episodes: int = 10, max_episode_steps: int = 1000) -> float:
         returns = []
         for _ in range(num_episodes):
             obs = self.env.reset()
@@ -209,7 +215,7 @@ class CQLTrainer:
             batch[k].to(self.device) for k in ["observations", "actions", "rewards", "next_observations", "terminals"]
         )
 
-    def save_checkpoint(self, path: str, idx: int):
+    def save_checkpoint(self, path: str, idx: int) -> None:
         torch.save(
             {
                 "q1": self.q1.state_dict(),
@@ -224,7 +230,7 @@ class CQLTrainer:
             path + f"/{self.env.spec.id}_ckpt{idx}.pth",
         )
 
-    def load_checkpoint(self, path: str):
+    def load_checkpoint(self, path: str) -> None:
         ckpt = torch.load(path)
         self.q1.load_state_dict(ckpt["q1"])
         self.q2.load_state_dict(ckpt["q2"])

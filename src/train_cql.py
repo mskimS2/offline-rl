@@ -7,6 +7,8 @@ from buffer import ReplayBuffer, get_offline_dataset
 from utils import set_randomness
 from models.layers.critic import MLPQFunction
 from models.layers.actor import SquashedGaussianActor
+from loggers.tensorboard import TensorBoardLogger
+
 
 if __name__ == "__main__":
     mujoco_env_list = [
@@ -69,5 +71,7 @@ if __name__ == "__main__":
             "q2": torch.optim.Adam(networks["q2"].parameters(), lr=config["qf_lr"]),
         }
 
-        cql = CQLTrainer(env, config, replay_buffer, networks, optimizers)
+        logger = TensorBoardLogger()
+        
+        cql = CQLTrainer(env, config, replay_buffer, networks, logger, optimizers)
         cql.train()
