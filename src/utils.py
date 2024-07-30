@@ -87,4 +87,31 @@ def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, 
 
 
 def asymmetric_l2_loss(u, tau):
-        return torch.mean(torch.abs(tau - (u < 0).float()) * u**2)
+    return torch.mean(torch.abs(tau - (u < 0).float()) * u**2)
+
+
+def numpy_to_tensor(x: np.ndarray, device="cpu") -> torch.Tensor:
+    """
+    Convert a numpy array to a PyTorch tensor.
+
+    Parameters:
+    np_array (numpy.ndarray): The numpy array to convert.
+    device (str): The device to which the tensor will be moved. Default is 'cpu'.
+
+    Returns:
+    torch.Tensor: The converted tensor.
+    """
+    return torch.from_numpy(x).to(device)
+
+
+def tensor_to_numpy(x: torch.Tensor) -> np.ndarray:
+    """
+    Convert a PyTorch tensor to a numpy array.
+
+    Parameters:
+    tensor (torch.Tensor): The tensor to convert.
+
+    Returns:
+    numpy.ndarray: The converted numpy array.
+    """
+    return x.cpu().numpy()

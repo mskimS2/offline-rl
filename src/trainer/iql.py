@@ -120,7 +120,7 @@ class IQLTrainer(OfflineRLTrainer):
             v = self.v_network(observations)
             adv = target_q - v
 
-        exp_adv = torch.exp(self.config["beta"] * adv.detach()).clamp(max=self.config["EXP_ADV_MAX"])
+        exp_adv = torch.exp(self.config["beta"] * adv.detach()).clamp(max=self.config["exp_adv_max"])
         policy_out, _ = self.policy(observations)
         bc_losses = -policy_out.log_prob(actions).sum(-1, keepdim=True)
         policy_loss = torch.mean(exp_adv * bc_losses)
@@ -138,7 +138,7 @@ class IQLTrainer(OfflineRLTrainer):
             batch[k].to(self.device) for k in ["observations", "actions", "rewards", "next_observations", "terminals"]
         )
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def evaluate(self, num_episodes: int = 10, max_episode_steps: int = 1000) -> float:
         returns = []
         for _ in range(num_episodes):

@@ -172,7 +172,7 @@ class CQLTrainer(OfflineRLTrainer):
 
         return (cql_loss, q_loss)
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def evaluate(self, num_episodes: int = 10, max_episode_steps: int = 1000) -> float:
         returns = []
         for _ in range(num_episodes):

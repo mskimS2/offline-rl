@@ -18,7 +18,7 @@ if __name__ == "__main__":
         "replay_size": 200000,
         "discount": 0.99,
         "beta": 3.0,
-        "EXP_ADV_MAX": 100.0,
+        "exp_adv_max": 100.0,
         "iql_tau": 0.7,
         "tau": 0.005,
         "soft_update_tau": 5e-3,
@@ -51,8 +51,8 @@ if __name__ == "__main__":
     }
 
     # file_name="src/expert_dataset.pkl"
-    replay_buffer = ReplayBuffer(obs_dim, act_dim, config["replay_size"], config["device"])
     dataset = get_offline_dataset(env)
+    replay_buffer = ReplayBuffer(obs_dim, act_dim, config["replay_size"], config["device"])
     replay_buffer.load_dataset(dataset)
 
     logger = TensorBoardLogger()
