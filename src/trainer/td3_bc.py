@@ -169,6 +169,7 @@ class TD3BCTrainer(OfflineRLTrainer):
     def save_checkpoint(self, path: str, idx: int) -> None:
         torch.save(
             {
+                "iterations": idx,
                 "actor": self.actor.state_dict(),
                 "qf1": self.qf1.state_dict(),
                 "qf2": self.qf2.state_dict(),

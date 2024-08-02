@@ -158,6 +158,7 @@ class IQLTrainer(OfflineRLTrainer):
     def save_checkpoint(self, path: str, idx: int) -> None:
         torch.save(
             {
+                "iterations": idx,
                 "q_network": self.q_network.state_dict(),
                 "v_network": self.v_network.state_dict(),
                 "policy": self.policy.state_dict(),

@@ -2,7 +2,7 @@ import gym
 import pickle
 import torch
 import numpy as np
-from typing import Dict, Any
+from typing import Dict, Any, Generator
 from utils import combined_shape, discount_cumsum
 
 
@@ -78,6 +78,8 @@ class ReplayBuffer:
         self.dones = torch.zeros((buffer_size, 1), dtype=torch.float32, device=device)
 
     def _to_tensor(self, data: np.ndarray) -> torch.Tensor:
+        if isinstance(data, torch.Tensor):
+            return data.clone().detach().to(self.device)
         return torch.tensor(data, dtype=torch.float32, device=self.device)
 
     def load_dataset(self, dataset: Dict[str, np.ndarray]):
@@ -99,7 +101,7 @@ class ReplayBuffer:
         self.next_obses[indices] = self._to_tensor(next_observations)
         self.actions[indices] = self._to_tensor(actions)
         self.rewards[indices] = self._to_tensor(rewards.reshape(-1, 1))
-        self.dones[indices] = self._to_tensor(terminals.reshape(-1, 1))
+        self.dones[indices] = self._to_tensor(terminals.reshape(-1, 1).float())  # Convert to float here
         self.pointer = (self.pointer + batch_size) % self.buffer_size
         self.size = min(self.size + batch_size, self.buffer_size)
 
@@ -112,6 +114,22 @@ class ReplayBuffer:
             "next_observations": self.next_obses[indices],
             "terminals": self.dones[indices],
         }
+
+    def sample_all(self, batch_size: int) -> Generator[Dict[str, torch.Tensor], None, None]:
+        num_batches = (self.size + batch_size - 1) // batch_size  # Calculate number of full batches
+        indices = np.arange(self.size)
+        np.random.shuffle(indices)
+        for batch_id in range(num_batches):
+            batch_start = batch_id * batch_size
+            batch_end = min(self.size, (batch_id + 1) * batch_size)
+            batch_indices = indices[batch_start:batch_end]
+            yield {
+                "observations": self.obses[batch_indices],
+                "actions": self.actions[batch_indices],
+                "rewards": self.rewards[batch_indices],
+                "next_observations": self.next_obses[batch_indices],
+                "terminals": self.dones[batch_indices],
+            }
 
     def normalize_states(self, eps: float = 1e-3) -> tuple:
         mean = self.obses.mean(0, keepdims=True)

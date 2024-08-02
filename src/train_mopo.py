@@ -6,9 +6,11 @@ from torch import nn
 from copy import deepcopy
 from models.layers.actor import SquashedGaussianMLPActor
 from models.layers.critic import MLPQFunction
-from models.mopo import EnsembleModel
+from trainer.mopo import EnsembleModel
 from utils import soft_update
 from buffer import get_offline_dataset, ReplayBuffer
+from trainer.mopo import MopoTrainer
+from loggers.tensorboard import TensorBoardLogger
 
 
 def mopo(
@@ -254,15 +256,57 @@ def mopo(
 
 
 if __name__ == "__main__":
+    # mopo(lambda: env, device=device)
+
+    config = {
+        "max_iterations4dynamic_model": 10000,
+        "max_total_steps": 50000,
+        "buffer_size": 1000000,
+        "dynamics_lr": 1e-3,
+        "batch_size": 256,
+        "hidden_sizes": [256, 256, 256],
+        "activation": nn.ReLU,
+        "tau": 5e-3,
+        "policy_lr": 1e-4,
+        "qf_lr": 3e-4,
+        "rollout_freq": 2,
+        "rollout_batch_size": 1000,
+        "rollout_length": 5,
+        "mixing_ratio": 0.1,
+        "discount": 0.99,
+        "device": torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu"),
+    }
 
     env = gym.make("HalfCheetah-v4")
+    obs_dim = env.observation_space.shape[0]
+    act_dim = env.action_space.shape[0]
+    act_limit = env.action_space.high[0]
+    device = torch.device("cuda")
 
-    device = torch.device("cpu")
-    if torch.cuda.is_available():
-        device = torch.device("cuda:0")
-        torch.cuda.empty_cache()
-        print("Device set to : " + str(torch.cuda.get_device_name(device)))
-    else:
-        print("Device set to : cpu")
+    dataset = get_offline_dataset(env, file_name="src/expert_dataset.pkl")
+    replay_buffer = ReplayBuffer(obs_dim, act_dim, config["buffer_size"], config["device"])
+    replay_buffer.load_dataset(dataset)
 
-    mopo(lambda: env, device=device)
+    networks = {
+        "q1": MLPQFunction(obs_dim, act_dim, config["hidden_sizes"], config["activation"]),
+        "q2": MLPQFunction(obs_dim, act_dim, config["hidden_sizes"], config["activation"]),
+        "target_q1": deepcopy(MLPQFunction(obs_dim, act_dim, config["hidden_sizes"], config["activation"])),
+        "target_q2": deepcopy(MLPQFunction(obs_dim, act_dim, config["hidden_sizes"], config["activation"])),
+        "policy": SquashedGaussianMLPActor(obs_dim, act_dim, config["hidden_sizes"], config["activation"], act_limit),
+        "log_alpha": torch.zeros(1, requires_grad=True),
+    }
+
+    optimizers = {
+        "log_alpha": torch.optim.Adam([networks["log_alpha"]], lr=config["policy_lr"]),
+        "policy": torch.optim.Adam(networks["policy"].parameters(), lr=config["policy_lr"]),
+        "q1": torch.optim.Adam(networks["q1"].parameters(), lr=config["qf_lr"]),
+        "q2": torch.optim.Adam(networks["q2"].parameters(), lr=config["qf_lr"]),
+    }
+
+    schedulers = {}
+
+    logger = TensorBoardLogger()
+
+    mopo = MopoTrainer(env, config, replay_buffer, networks, logger, optimizers, schedulers)
+    mopo.train_ensemble_model()
+    mopo.train()

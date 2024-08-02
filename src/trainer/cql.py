@@ -61,7 +61,7 @@ class CQLTrainer(OfflineRLTrainer):
         self.q1_optimizer = optimizers["q1"]
         self.q2_optimizer = optimizers["q2"]
 
-    def initialize_schedulers(self) -> Any:
+    def initialize_schedulers(self, schedulers: Dict[str, Any]) -> Any:
         return None
 
     def initialize_logger(self, logger: Logger):
@@ -227,6 +227,7 @@ class CQLTrainer(OfflineRLTrainer):
     def save_checkpoint(self, path: str, idx: int) -> None:
         torch.save(
             {
+                "iterations": idx,
                 "q1": self.q1.state_dict(),
                 "q2": self.q2.state_dict(),
                 "policy": self.policy.state_dict(),
