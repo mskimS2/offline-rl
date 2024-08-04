@@ -134,7 +134,7 @@ class MopoTrainer(OfflineRLTrainer):
     def initialize_logger(self, logger: "TensorBoardLogger"):
         self.logger = logger
         self.logger.init_logger()
-        self.logger.init_experiment("Mopo Training")
+        self.logger.init_experiment("MOPO Training")
         self.logger.log_params(self.config)
 
     def train_ensemble_model(self):
