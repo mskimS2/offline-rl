@@ -147,3 +147,19 @@ D4RL_DATASET_STATS = {
                 ]
             },
     }
+
+
+TEST_D4RL_ENV_CONFIGS = {
+    "walker2d": {
+        "eval_env_name": "Walker2d-v3",
+        "rtg_target": 5000
+    },
+    "halfcheetah": {
+        "eval_env_name": "HalfCheetah-v3",
+        "rtg_target": 6000
+    },
+    "hopper": {
+        "eval_env_name": "Hopper-v3",
+        "rtg_target": 3600
+    }
+}

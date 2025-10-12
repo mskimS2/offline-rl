@@ -5,22 +5,7 @@ import argparse
 import numpy as np
 from utils import evaluate_on_env, get_d4rl_normalized_score, get_d4rl_dataset_stats
 from models import DecisionTransformer
-
-
-ENV_CONFIGS = {
-    "walker2d": {
-        "eval_env_name": "Walker2d-v3",
-        "rtg_target": 5000
-    },
-    "halfcheetah": {
-        "eval_env_name": "HalfCheetah-v3",
-        "rtg_target": 6000
-    },
-    "hopper": {
-        "eval_env_name": "Hopper-v3",
-        "rtg_target": 3600
-    }
-}
+from envs import TEST_TEST_D4RL_ENV_CONFIGS
 
 
 def load_model(checkpoint_path: str, state_dim: int, act_dim: int,
@@ -43,10 +28,10 @@ def load_model(checkpoint_path: str, state_dim: int, act_dim: int,
 
 
 def test(args):
-    if args.env not in ENV_CONFIGS:
+    if args.env not in TEST_D4RL_ENV_CONFIGS:
         raise NotImplementedError(f"Unsupported environment: {args.env}")
 
-    env_cfg = ENV_CONFIGS[args.env]
+    env_cfg = TEST_D4RL_ENV_CONFIGS[args.env]
     eval_env_name = env_cfg["eval_env_name"]
     eval_rtg_target = env_cfg["rtg_target"]
     eval_env_d4rl_name = f"{args.env}-{args.dataset}-v2"
@@ -105,7 +90,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate Decision Transformer on D4RL envs")
 
     parser.add_argument('--env', type=str, default='halfcheetah',
-                        choices=list(ENV_CONFIGS.keys()))
+                        choices=list(TEST_D4RL_ENV_CONFIGS.keys()))
     parser.add_argument('--dataset', type=str, default='medium')
     parser.add_argument('--rtg_scale', type=int, default=1000)
 
