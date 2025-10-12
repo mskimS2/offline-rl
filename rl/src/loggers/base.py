@@ -2,13 +2,10 @@ from abc import ABC
 
 
 class Logger(ABC):
-    def init_logger(self):
+    def init_experiment(self):
         pass
 
     def log_params(self):
-        pass
-
-    def init_experiment(self):
         pass
 
     def log_artifact(self):

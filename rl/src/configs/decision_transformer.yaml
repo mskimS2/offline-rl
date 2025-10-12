@@ -1,0 +1,37 @@
+dataset:
+  env: halfcheetah
+  challenge: medium # medium / medium-replay / medium-expert
+  rtg_scale: 1000
+
+eval_log:
+  max_ep_len: 1000
+  num_ep: 10
+
+paths:
+  dataset_dir: data/
+  log_dir: checkpoints/decision_transformer/
+
+model:
+  name: decision_transformer
+  context_len: 20
+  n_blocks: 3
+  embed_dim: 128
+  n_heads: 1
+  dropout_p: 0.1
+
+training:
+  batch_size: 64
+  max_iters: 1000
+  updates_per_iter: 100
+
+optimizer:
+  name: AdamW
+  lr: 1e-4
+  weight_decay: 1e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: warmup_linear
+  warmup_steps: 10000
+
+device: cuda

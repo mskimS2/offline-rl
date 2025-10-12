@@ -7,35 +7,34 @@ import numpy as np
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from datetime import datetime
-from utils import D4RLTrajectoryDataset, evaluate_on_env, get_d4rl_normalized_score
+from utils import evaluate_on_env, set_randomness
 from models import DecisionTransformer
+from envs import D4RLTrajectoryDataset, get_d4rl_normalized_score, get_d4rl_mujoco_env_config
+
+
+def setup_logging(log_dir: Path) -> None:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+        handlers=[
+            logging.FileHandler(log_dir / "train.log", encoding="utf-8"),
+            logging.StreamHandler(),
+        ],
+    )
+
 
 
 def train(args):
 
-    dataset = args.dataset          # medium / medium-replay / medium-expert
-    rtg_scale = args.rtg_scale      # normalize returns to go
+    dataset =           
+    rtg_scale = args.dataset.rtg_scale      # normalize returns to go
 
     # use v3 env for evaluation because
     # Decision Transformer paper evaluates results on v3 envs
 
-    if args.env == 'walker2d':
-        env_name = 'Walker2d-v3'
-        rtg_target = 5000
-        env_d4rl_name = f'walker2d-{dataset}-v2'
+    env_name, rtg_target, env_d4rl_name =  get_d4rl_mujoco_env_config(env=args.env, challenge=args.dataset.challenge)
 
-    elif args.env == 'halfcheetah':
-        env_name = 'HalfCheetah-v3'
-        rtg_target = 6000
-        env_d4rl_name = f'halfcheetah-{dataset}-v2'
-
-    elif args.env == 'hopper':
-        env_name = 'Hopper-v3'
-        rtg_target = 3600
-        env_d4rl_name = f'hopper-{dataset}-v2'
-
-    else:
-        raise NotImplementedError
 
     max_eval_ep_len = args.max_eval_ep_len  # max len of one episode
     num_eval_ep = args.num_eval_ep          # num of evaluation episodes
@@ -234,35 +233,6 @@ def train(args):
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument('--env', type=str, default='halfcheetah')
-    parser.add_argument('--dataset', type=str, default='medium')
-    parser.add_argument('--rtg_scale', type=int, default=1000)
-
-    parser.add_argument('--max_eval_ep_len', type=int, default=1000)
-    parser.add_argument('--num_eval_ep', type=int, default=10)
-
-    parser.add_argument('--dataset_dir', type=str, default='data/')
-    parser.add_argument('--log_dir', type=str, default='checkpoints/')
-
-    parser.add_argument('--context_len', type=int, default=20)
-    parser.add_argument('--n_blocks', type=int, default=3)
-    parser.add_argument('--embed_dim', type=int, default=128)
-    parser.add_argument('--n_heads', type=int, default=1)
-    parser.add_argument('--dropout_p', type=float, default=0.1)
-
-    parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--lr', type=float, default=1e-4)
-    parser.add_argument('--wt_decay', type=float, default=1e-4)
-    parser.add_argument('--warmup_steps', type=int, default=10000)
-
-    parser.add_argument('--max_train_iters', type=int, default=1000)
-    parser.add_argument('--num_updates_per_iter', type=int, default=100)
-
-    parser.add_argument('--device', type=str, default='cuda')
-
-    args = parser.parse_args()
-
-    train(args)
+    from config import load_config
+    cfg = load_config("src/configs/decision_transformer.yaml")
+    train(cfg)
